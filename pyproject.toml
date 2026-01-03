@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "arxiv-paper-agent"
+dynamic = ["version"]
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [{ name = "larryinx" }]
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+]
+dependencies = []
+
+[project.urls]
+Source = "https://github.com/uw-swag/arxiv-paper-agent"
+Issues = "https://github.com/uw-swag/arxiv-paper-agent/issues"
+
+[tool.hatch.version]
+path = "src/axpa/__about__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/axpa"]
+
+# linting (ruff)
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+select = [
+    "E", # pycodestyle error
+    "F", # pyflakes
+    "I", # isort
+]
+
+[tool.ruff.isort]
+known-first-party = ["axpa"]
+
+[dependency-groups]
+dev = [
+    "black",
+    "coverage[toml]",
+    "hatch",
+    "pytest>=6",
+    "pytest-cov",
+    "ruff",
+]
