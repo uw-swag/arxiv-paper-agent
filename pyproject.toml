@@ -15,7 +15,14 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: POSIX :: Linux",
 ]
-dependencies = []
+dependencies = [
+    "aiohttp>=3.13.3",
+    "feedparser>=6.0.12",
+    "mcp>=1.25.0",
+    "mcp-agent>=0.2.6",
+    "openai>=2.14.0",
+    "pypdf2>=3.0.1",
+]
 
 [project.urls]
 Source = "https://github.com/uw-swag/arxiv-paper-agent"
