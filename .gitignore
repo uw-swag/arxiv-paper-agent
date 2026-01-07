@@ -3,6 +3,8 @@
 \#*\#
 .DS_Store
 
+**/ignore_files/
+
 ### Coverage report
 /cov.xml
 
