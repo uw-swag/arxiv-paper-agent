@@ -15,7 +15,9 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: POSIX :: Linux",
 ]
-dependencies = []
+dependencies = [
+    "vllm>=0.13.0",
+]
 
 [project.urls]
 Source = "https://github.com/uw-swag/arxiv-paper-agent"
