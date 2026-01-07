@@ -11,6 +11,8 @@ import os
 import io
 import PyPDF2
 from datetime import datetime, timezone, timedelta
+from .category_prompt import ArxivCategoryInfo
+from .category_prompt import ArxivCategory
 
 load_dotenv()
 
@@ -203,7 +205,12 @@ async def fetch_arxiv_papers_last_week_with_categories(
                 break
 
         return papers
-
+    
+def get_category_by_code(code: str) -> ArxivCategoryInfo | None:
+    for cat in ArxivCategory:
+        if cat.value.code == code:
+            return cat.value
+    return None
 
 async def fetch_paper_content(session: aiohttp.ClientSession, paper_id: str) -> str:
     """
@@ -294,7 +301,7 @@ async def search_arxiv(ctx: Context, query: str, categories: list[str] = [], lim
     Args:
         ctx: The MCP server provided context
         query: Search keywords or phrases
-        limit: Maximum number of results to return (default: 5)
+        limit: Maximum number of results to return (default: 100)
     """
     try:
         session = ctx.request_context.lifespan_context.session
@@ -416,6 +423,33 @@ async def main():
     else:
         # Run the MCP server with stdio transport
         await mcp.run_stdio_async()
+
+@mcp.tool()
+async def describe_arxiv_categories(
+    ctx: Context,
+    categories: list[str],
+) -> str:
+    results = []
+    unknown = []
+
+    for code in categories:
+        info = get_category_by_code(code)
+        if info:
+            results.append(
+                {
+                    "code": info.code,
+                    "name": info.name,
+                    "description": info.description,
+                }
+            )
+        else:
+            unknown.append(code)
+
+    output = {"categories": results}
+    if unknown:
+        output["unknown"] = unknown
+
+    return json.dumps(output, indent=2)
 
 if __name__ == "__main__":
     asyncio.run(main())
