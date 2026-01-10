@@ -15,14 +15,32 @@ source .venv/bin/activate
 - Add development-only tools: `uv add --dev <package>`
 - Remove packages with `uv remove <package>` and rerun `uv sync`.
 
+## Deploying the LLM
+```bash
+# 4 H100
+sbatch scripts/deploy_minimax.sh
+# 2 H100
+sbatch scripts/deploy_gptoss.sh
+
+# Expose the server to the internet (requires ngrok token but free)
+sbatch scripts/nibi_serve_example.sh
+```
+
+## Running the Agent
+```bash
+python main.py
+```
+
 ## Related Projects
 - [mcp-agent](https://github.com/lastmile-ai/mcp-agent)
 - [arxiv-mcp](https://github.com/kelvingao/arxiv-mcp)
 
 ## TODO
-- [ ] Collect related Subjects from Arxiv
-- [ ] Build a LLM agent to crawl Arxiv new papers
-- [ ] Build a LLM agent to summarize papers
-- [ ] Build a LLM agent to push papers to notion
-- [ ] Related works agent
+- [ ] Fix stage 3 (parallel execution)
+- [ ] Stage 4: Score papers
+- [ ] Stage 5: Summarize papers
+- [ ] Gather all results to output (categories + filtered papers list, selected top-k paper summaries)
+- [ ] Email notification (put in main.py or add something between workflows and outputs/exporters?)
+- [ ] Add Notion server
+- [ ] Push results to Notion (same issue as above)
 - [ ] ...
