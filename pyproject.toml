@@ -17,11 +17,13 @@ classifiers = [
 ]
 dependencies = [
     "aiohttp>=3.13.3",
+    "fastmcp>=2.14.2",
     "feedparser>=6.0.12",
     "mcp>=1.25.0",
     "mcp-agent>=0.2.6",
     "openai>=2.14.0",
-    "pypdf2>=3.0.1",
+    "pypdf>=6.5.0",
+    "vllm>=0.13.0",
 ]
 
 [project.urls]

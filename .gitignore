@@ -4,6 +4,8 @@
 .DS_Store
 
 **/ignore_files/
+related/
+mcp_agent.secrets.yaml
 
 ### Coverage report
 /cov.xml
@@ -67,6 +69,7 @@ cover/
 *.pot
 
 # Django stuff:
+logs/
 *.log
 local_settings.py
 db.sqlite3

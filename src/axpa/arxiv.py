@@ -1,4 +1,4 @@
-from mcp.server.fastmcp import FastMCP, Context
+from mcp.server.fastmcp import Context, FastMCP
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -9,10 +9,10 @@ import asyncio
 import json
 import os
 import io
-import PyPDF2
+import pypdf
 from datetime import datetime, timezone, timedelta
-from .category_prompt import ArxivCategoryInfo
-from .category_prompt import ArxivCategory
+from axpa.category_prompt import ArxivCategoryInfo
+from axpa.category_prompt import ArxivCategory
 
 load_dotenv()
 
@@ -235,7 +235,7 @@ async def fetch_paper_content(session: aiohttp.ClientSession, paper_id: str) -> 
             
             # Use PyPDF2 to extract text
             pdf_file = io.BytesIO(pdf_content)
-            pdf_reader = PyPDF2.PdfReader(pdf_file)
+            pdf_reader = pypdf.PdfReader(pdf_file)
             
             # Extract text from first few pages (full extraction could be too large)
             max_pages = min(5, len(pdf_reader.pages))
@@ -415,20 +415,23 @@ async def search_and_summarize(ctx: Context, query: str, categories: list[str] =
     except Exception as e:
         return f"Error searching and summarizing arXiv papers: {str(e)}"
 
-async def main():
-    transport = os.getenv("TRANSPORT", "sse")
-    if transport == 'sse':
-        # Run the MCP server with sse transport
-        await mcp.run_sse_async()
-    else:
-        # Run the MCP server with stdio transport
-        await mcp.run_stdio_async()
-
 @mcp.tool()
 async def describe_arxiv_categories(
     ctx: Context,
     categories: list[str],
 ) -> str:
+    """Get detailed descriptions of arXiv category codes.
+
+    This tool retrieves the full name and description for specified arXiv
+    category codes (e.g., cs.SE, cs.CR, cs.AI).
+
+    Args:
+        ctx: The MCP server provided context
+        categories: List of arXiv category codes to look up
+
+    Returns:
+        JSON with category details including code, name, and description
+    """
     results = []
     unknown = []
 
@@ -450,6 +453,17 @@ async def describe_arxiv_categories(
         output["unknown"] = unknown
 
     return json.dumps(output, indent=2)
+
+
+async def main():
+    transport = os.getenv("TRANSPORT", "stdio")
+    if transport == 'sse':
+        # Run the MCP server with sse transport
+        await mcp.run_sse_async()
+    else:
+        # Run the MCP server with stdio transport
+        await mcp.run_stdio_async()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

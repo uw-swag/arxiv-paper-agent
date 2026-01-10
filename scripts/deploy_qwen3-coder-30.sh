@@ -15,8 +15,7 @@ source .venv/bin/activate
 
 TP=$(nvidia-smi --list-gpus | wc -l)
 
-# MODEL_PATH="/home/yinx/yinx/scratch/yinx/custom_models/Qwen3-Coder-30B-A3B-Instruct"
-MODEL_PATH="/home/yinx/yinx/scratch/yinx/custom_models/Qwen3-Coder-480B-A35B-Instruct-FP8"
+MODEL_PATH="/home/yinx/yinx/scratch/yinx/custom_models/Qwen3-Coder-30B-A3B-Instruct"
 PORT=8000
 HOST="127.0.0.1"
 
@@ -24,9 +23,8 @@ vllm serve ${MODEL_PATH} \
     --port ${PORT} \
     --host ${HOST} \
     --tensor-parallel-size ${TP} \
-	--kv-cache-dtype fp8 \
     --gpu-memory-utilization 0.9 \
-	--cpu-offload-gb 200 \
-    --max-model-len 65536 \
+    --max-model-len 131072 \
+    --served-model-name "Qwen3-Coder" \
     --enable-auto-tool-choice \
     --tool-call-parser qwen3_xml

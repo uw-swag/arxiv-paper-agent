@@ -1,0 +1,17 @@
+workflows:
+  arxiv_analysis:
+    stages:
+      - category_selection
+      - paper_filtering
+      - paper_scoring
+      - paper_summarization
+
+    parameters:
+      search_limit: 100
+      top_k: 10
+      score_rounds: 2
+
+    parallelism:
+      max_concurrent_filters: 10  # Limit concurrent agents
+      max_concurrent_scorers: 10
+      max_concurrent_summarizers: 5

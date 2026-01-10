@@ -9,7 +9,7 @@ from mcp_agent.app import MCPApp
 from mcp_agent.agents.agent import Agent
 from mcp_agent.workflows.llm.augmented_llm_openai import OpenAIAugmentedLLM
 
-from .category_prompt import validate_category_codes, all_category_codes
+from axpa.category_prompt import validate_category_codes, all_category_codes
 
 def _loads_json(s: str) -> Any:
     try:
@@ -113,7 +113,10 @@ async def agent_llm_flow(
 
     app = MCPApp(name="agent_arxiv_llm")
 
-    async with app.run():
+    async with app.run() as agent_app:
+        # context = agent_app.context
+        # print(context.config)
+        
         agent = Agent(
             name="arxiv_paper_agent",
             instruction=(
@@ -145,6 +148,7 @@ async def agent_llm_flow(
                 name="_llm_choose_categories",
                 retries=retries,
             )
+            print(f"[DEBUG] Selected categories: {categories}")
 
             final_prompt = _build_final_report_prompt(
                 query=query,
@@ -153,13 +157,19 @@ async def agent_llm_flow(
                 details_top_k=details_top_k,
                 include_content=include_content,
             )
+            print(f"[DEBUG] Generated final prompt (first 500 chars): {final_prompt[:500]}...")
 
+            print("[DEBUG] Calling LLM to generate final report...")
             answer: str = await _retry_async(
                 lambda: llm.generate_str(final_prompt),
                 name="llm.generate_str(final_prompt)",
                 retries=retries,
             )
 
+            print(f"[DEBUG] Got answer, length: {len(answer)}")
+            print("\n" + "="*80)
+            print("FINAL REPORT:")
+            print("="*80 + "\n")
             print(answer)
 
 async def main() -> None:

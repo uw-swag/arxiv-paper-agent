@@ -1,0 +1,25 @@
+execution_engine: asyncio
+
+logger:
+  transports: [console, file]
+  level: debug
+  path_settings:
+    path_pattern: "logs/mcp_agent_{unique_id}.log"
+    unique_id: "timestamp"
+    timestamp_format: "%Y%m%d_%H%M%S"
+
+mcp:
+  servers:
+    arxiv:
+      transport: stdio
+      command: "python"
+      args: ["-m", "axpa.servers.arxiv"]
+      terminate_on_close: true
+
+
+
+openai:
+  default_model: "openai/gpt-oss-120b"
+  base_url: "https://unermined-bridgette-transempirical.ngrok-free.dev/v1"
+  # default_model: "MiniMax-M2.1"
+  # base_url: "https://unlobbying-gauzelike-lyman.ngrok-free.dev/v1"

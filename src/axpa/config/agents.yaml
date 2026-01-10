@@ -1,0 +1,20 @@
+agents:
+  category_selector:
+    name: "category_selector"
+    server_names: ["arxiv"]
+    model: "MiniMax-M2.1"
+
+  paper_filter:
+    name: "paper_filter"
+    server_names: ["arxiv"]
+    model: "MiniMax-M2.1"
+
+  paper_scorer:
+    name: "paper_scorer"
+    server_names: ["arxiv"]
+    model: "MiniMax-M2.1"
+
+  paper_summarizer:
+    name: "paper_summarizer"
+    server_names: ["arxiv"]
+    model: "MiniMax-M2.1"
