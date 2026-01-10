@@ -23,7 +23,9 @@ sbatch scripts/deploy_minimax.sh
 sbatch scripts/deploy_gptoss.sh
 
 # Expose the server to the internet (requires ngrok token but free)
-sbatch scripts/nibi_serve_example.sh
+ssh {compute node}
+cd ......
+bash scripts/nibi_serve_example.sh
 ```
 
 ## Running the Agent
