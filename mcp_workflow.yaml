@@ -1,0 +1,15 @@
+
+parameters:
+  query: "Reinforcement enhanced LLM code generation"
+  search_limit: 500 # Number of papers to fetch from arXiv, should not be too large
+  top_k: 10 # Top k papers to output
+  score_rounds: 2 # TODO: Not implemented yet
+  output_format: "markdown" # TODO: Not implemented yet, should be a list
+
+# custom_timestamps:
+  # paper_start_time: "2025-01-01"
+  # paper_end_time: "2025-01-12"
+
+# Personalized summary: # TODO: Not implemented yet
+
+# Exporter: # TODO: 
