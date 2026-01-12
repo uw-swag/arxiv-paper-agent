@@ -16,12 +16,6 @@ SELECTION RULES
 - If the query is vague, pick the best broad-fit categories rather than guessing niche ones.
 - Never include non-cs categories unless they appear in the ALLOWED LIST.
 
-OUTPUT FORMAT (STRICT)
-- Return ONLY a single JSON object.
-- No markdown, no explanation, no extra keys, no trailing commas.
-- The JSON schema must be exactly:
-  {{"categories": ["cs.XX", "cs.YY"]}}
-
 ALLOWED LIST (IDs, Names, and Descriptions)
 {all_category_prompts()}
 """.strip()

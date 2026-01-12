@@ -18,7 +18,7 @@ TP=$(nvidia-smi --list-gpus | wc -l)
 MODEL_PATH="/home/yinx/yinx/scratch/yinx/custom_models/MiniMax-M2.1"
 MAX_MODEL_LEN=131072
 TOOL_CALL_PARSER="minimax_m2"
-REASONING_PARSER="minimax_m2_append_think"
+REASONING_PARSER="minimax_m2"
 PORT=8000
 HOST="127.0.0.1"
 

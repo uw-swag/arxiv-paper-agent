@@ -148,7 +148,6 @@ async def agent_llm_flow(
                 name="_llm_choose_categories",
                 retries=retries,
             )
-            print(f"[DEBUG] Selected categories: {categories}")
 
             final_prompt = _build_final_report_prompt(
                 query=query,
@@ -157,16 +156,13 @@ async def agent_llm_flow(
                 details_top_k=details_top_k,
                 include_content=include_content,
             )
-            print(f"[DEBUG] Generated final prompt (first 500 chars): {final_prompt[:500]}...")
 
-            print("[DEBUG] Calling LLM to generate final report...")
             answer: str = await _retry_async(
                 lambda: llm.generate_str(final_prompt),
                 name="llm.generate_str(final_prompt)",
                 retries=retries,
             )
 
-            print(f"[DEBUG] Got answer, length: {len(answer)}")
             print("\n" + "="*80)
             print("FINAL REPORT:")
             print("="*80 + "\n")

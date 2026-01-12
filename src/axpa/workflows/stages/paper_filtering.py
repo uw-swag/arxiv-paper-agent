@@ -1,21 +1,9 @@
 from axpa.agents.paper_filter import create_paper_filter_agent
-from axpa.outputs.data_models import Paper
-
-from mcp_agent.agents.agent import Agent
-from mcp_agent.workflows.parallel.fan_in import FanInInput
-from mcp_agent.workflows.parallel.parallel_llm import ParallelLLM
+from axpa.outputs.data_models import Paper, FilterResult
+from mcp_agent.workflows.llm.augmented_llm import RequestParams
 
 from typing import List
-import json
-
-
-def aggregate_as_markdown(messages: FanInInput) -> str:
-    blocks = []
-    for source, outputs in messages.items():
-        lines = "\n".join(str(item) for item in outputs)
-        blocks.append(f"### {source}\n{lines}")
-    return "\n\n".join(blocks)
-
+import asyncio
 
 
 async def filter_papers_stage(
@@ -25,55 +13,115 @@ async def filter_papers_stage(
     llm_factory,
 ) -> List[Paper]:
     """
-    Stage 3: Filter papers in parallel.
+    Stage 3: Filter papers in parallel using asyncio.gather.
 
-    Creates one filter agent per paper, runs in parallel.
+    Creates one filter agent instance and calls it for each paper in parallel.
     Returns only accepted papers.
     """
-    # Create filter agents dynamically
-    filter_agents = [
-        create_paper_filter_agent() for _ in papers
-    ]
+    logger = context.logger
+    logger.info("filter_papers.start", data={"total_papers": len(papers), "query": query})
 
-    # Create aggregator agent
-    aggregator = Agent(
-        name="filter_aggregator",
-        instruction="""Aggregate filter results.
-        Return JSON list of accepted papers with reasoning."""
-    )
+    # Create a single filter agent
+    filter_agent = create_paper_filter_agent()
 
-    # TODO: Verify the deterministic_aggregator is correct and implement it
-    deterministic_aggregator = aggregate_as_markdown
+    # Attach LLM to the agent
+    async with filter_agent as agent_ctx:
+        llm = await agent_ctx.attach_llm(llm_factory)
 
-    # Create parallel workflow
-    parallel = ParallelLLM(
-        fan_in_agent=aggregator,
-        fan_out_agents=filter_agents,
-        llm_factory=llm_factory,
-    )
+        # Request parameters for filtering
+        request_params = RequestParams(
+            maxTokens=16384,
+            temperature=0.3
+        )
 
-    # Prepare messages
-    messages = [
-        f"Query: {query}\n\nPaper:\n{paper.model_dump_json(indent=2)}"
-        for paper in papers
-    ]
+        # Create filtering tasks for each paper
+        async def filter_single_paper(paper: Paper) -> tuple[Paper, FilterResult | None]:
+            """Filter a single paper and return (paper, result)."""
+            try:
+                message = f"Query: {query}\n\nPaper:\n{paper.model_dump_json(indent=2)}"
 
-    # FIXME: Execute those messages in parallel
-    result = await parallel.generate_str(messages)
+                # Use structured generation - much cleaner!
+                filter_result = await llm.generate_structured(
+                    message=message,
+                    response_model=FilterResult,
+                    request_params=request_params
+                )
 
-    # Parse and return accepted papers
-    accepted_papers = parse_filter_results(result, papers)
-    print(f"accepted_papers: {accepted_papers}")
-    raise Exception("Stop here")
-    return accepted_papers
+                # Add paper_id to the result
+                filter_result.paper_id = paper.id
 
+                return (paper, filter_result)
 
-def parse_filter_results(result: str, papers: List[Paper]) -> List[Paper]:
-    """
-    Parse the filter results and return the accepted papers.
-    """
-    accepted_papers = []
-    for paper in papers:
-        if paper.id in result:
-            accepted_papers.append(paper)
-    return accepted_papers
+            except Exception as e:
+                logger.error("filter_papers.paper_error", data={
+                    "paper_id": paper.id,
+                    "error": str(e)
+                })
+                return (paper, None)
+
+        # Run all filtering tasks in parallel
+        logger.info("filter_papers.parallel_start", data={"count": len(papers)})
+
+        try:
+            results = await asyncio.gather(
+                *[filter_single_paper(paper) for paper in papers],
+                return_exceptions=True
+            )
+            logger.info("filter_papers.parallel_complete", data={"results_count": len(results)})
+        except Exception as e:
+            logger.error("filter_papers.parallel_error", data={"error": str(e)})
+            raise
+
+        # Aggregate results
+        accepted_papers = []
+        rejected_papers = []
+        error_count = 0
+
+        logger.info("filter_papers.aggregating", data={"results_to_process": len(results)})
+
+        for idx, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.warning("filter_papers.result_exception", data={
+                    "index": idx,
+                    "error": str(result)
+                })
+                error_count += 1
+                continue
+
+            try:
+                paper, filter_result = result
+            except Exception as e:
+                logger.error("filter_papers.unpack_error", data={
+                    "index": idx,
+                    "result_type": type(result).__name__,
+                    "error": str(e)
+                })
+                error_count += 1
+                continue
+
+            if filter_result and filter_result.accept:
+                accepted_papers.append(paper)
+                logger.debug("filter_papers.accepted", data={
+                    "paper_id": paper.id,
+                    "title": paper.title[:60],
+                    "score": filter_result.relevance_score
+                })
+            elif filter_result:
+                rejected_papers.append(paper)
+                logger.debug("filter_papers.rejected", data={
+                    "paper_id": paper.id,
+                    "title": paper.title[:60],
+                    "score": filter_result.relevance_score
+                })
+            else:
+                error_count += 1
+
+        # Log summary
+        logger.info("filter_papers.complete", data={
+            "total_papers": len(papers),
+            "accepted": len(accepted_papers),
+            "rejected": len(rejected_papers),
+            "errors": error_count
+        })
+
+        return accepted_papers

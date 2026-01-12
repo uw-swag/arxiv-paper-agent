@@ -46,6 +46,7 @@ async def fetch_papers_from_categories_stage(
         List of Paper models, deduplicated and sorted by published date (newest first)
     """
     session = aiohttp.ClientSession()
+    logger = context.logger
 
     try:
         all_papers = []
@@ -56,10 +57,25 @@ async def fetch_papers_from_categories_stage(
             paper_start_time = paper_start_time.replace(tzinfo=timezone.utc)
         if paper_end_time.tzinfo is None:
             paper_end_time = paper_end_time.replace(tzinfo=timezone.utc)
-        
+
+        logger.info("fetch_papers.start", data={
+            "categories": categories,
+            "limit": limit,
+            "time_range": {
+                "start": paper_start_time.isoformat(),
+                "end": paper_end_time.isoformat()
+            }
+        })
+
         limit_per_category = 2000
 
-        for category in categories:
+        for idx, category in enumerate(categories):
+            logger.info("fetch_papers.category", data={
+                "category": category,
+                "index": idx + 1,
+                "total": len(categories)
+            })
+
             try:
                 # Build arXiv API query for this category
                 # Use cat:category_code to search by category
@@ -74,7 +90,10 @@ async def fetch_papers_from_categories_stage(
                 # Fetch from arXiv API
                 async with session.get(url) as response:
                     if response.status != 200:
-                        print(f"Failed to fetch papers for category {category}: HTTP {response.status}")
+                        logger.warning("fetch_papers.http_error", data={
+                            "category": category,
+                            "status": response.status
+                        })
                         continue
 
                     content = await response.text()
@@ -119,17 +138,12 @@ async def fetch_papers_from_categories_stage(
                         all_papers.append(paper)
                         seen_ids.add(paper_id)
 
-                        # Stop if we've reached the limit
-                        if len(all_papers) >= limit:
-                            break
-
-                # Stop if we've reached the limit
-                if len(all_papers) >= limit:
-                    break
-
             except Exception as e:
                 # Log error but continue with other categories
-                print(f"Error fetching papers for category {category}: {str(e)}")
+                logger.error("fetch_papers.category_error", data={
+                    "category": category,
+                    "error": str(e)
+                })
                 continue
 
         # Sort by published date (newest first)
@@ -138,8 +152,16 @@ async def fetch_papers_from_categories_stage(
             reverse=True
         )
 
+        result_papers = all_papers[:limit]
+
+        logger.info("fetch_papers.complete", data={
+            "total_fetched": len(all_papers),
+            "total_returned": len(result_papers),
+            "duplicates_removed": len(seen_ids) - len(all_papers)
+        })
+
         # Return up to limit papers
-        return all_papers[:limit]
+        return result_papers
 
     finally:
         await session.close()
@@ -174,6 +196,7 @@ async def fetch_papers_stage_debug(
         }
     """
     session = aiohttp.ClientSession()
+    logger = context.logger
 
     try:
         # Calculate last 7 days
@@ -189,17 +212,24 @@ async def fetch_papers_stage_debug(
             }
         }
 
+        logger.info("fetch_papers_debug.start", data={
+            "categories": categories,
+            "time_range": {"start": seven_days_ago.isoformat(), "end": now.isoformat()}
+        })
+
         limit_per_category = 2000
 
         for idx, category in enumerate(categories):
             # Add 3-second delay between requests to avoid rate limiting (except for first request)
             if idx > 0:
-                print(f"   Waiting 3 seconds before next request...")
+                logger.info("fetch_papers_debug.rate_limit_delay", data={"seconds": 3})
                 await asyncio.sleep(3)
             try:
-                print(f"\n{'='*60}")
-                print(f"Fetching papers for category: {category}")
-                print(f"{'='*60}")
+                logger.info("fetch_papers_debug.category_start", data={
+                    "category": category,
+                    "index": idx + 1,
+                    "total": len(categories)
+                })
 
                 # Build arXiv API query for this category
                 query = f"cat:{category}"
@@ -213,7 +243,10 @@ async def fetch_papers_stage_debug(
                 # Fetch from arXiv API
                 async with session.get(url) as response:
                     if response.status != 200:
-                        print(f"❌ Failed to fetch papers for category {category}: HTTP {response.status}")
+                        logger.warning("fetch_papers_debug.http_error", data={
+                            "category": category,
+                            "status": response.status
+                        })
                         results["categories"][category] = {
                             "count": 0,
                             "papers": [],
@@ -274,19 +307,26 @@ async def fetch_papers_stage_debug(
 
                     results["total_papers"] += len(category_papers)
 
-                    # Print statistics
-                    print(f"✅ Category: {category}")
-                    print(f"   Papers found (last 7 days): {len(category_papers)}")
-                    print(f"   Total entries fetched: {len(feed.entries)}")
+                    # Log statistics
+                    stats_data = {
+                        "category": category,
+                        "papers_found": len(category_papers),
+                        "total_entries_fetched": len(feed.entries)
+                    }
 
                     if category_papers:
                         newest = _parse_arxiv_datetime(category_papers[0].published)
                         oldest = _parse_arxiv_datetime(category_papers[-1].published)
-                        print(f"   Newest paper: {newest.strftime('%Y-%m-%d %H:%M:%S') if newest else 'N/A'}")
-                        print(f"   Oldest paper: {oldest.strftime('%Y-%m-%d %H:%M:%S') if oldest else 'N/A'}")
+                        stats_data["newest_paper"] = newest.isoformat() if newest else None
+                        stats_data["oldest_paper"] = oldest.isoformat() if oldest else None
+
+                    logger.info("fetch_papers_debug.category_complete", data=stats_data)
 
             except Exception as e:
-                print(f"❌ Error fetching papers for category {category}: {str(e)}")
+                logger.error("fetch_papers_debug.category_error", data={
+                    "category": category,
+                    "error": str(e)
+                })
                 results["categories"][category] = {
                     "count": 0,
                     "papers": [],
@@ -294,16 +334,16 @@ async def fetch_papers_stage_debug(
                 }
                 continue
 
-        # Print summary
-        print(f"\n{'='*60}")
-        print(f"SUMMARY - Last 7 Days Paper Statistics")
-        print(f"{'='*60}")
-        print(f"Time Range: {seven_days_ago.strftime('%Y-%m-%d')} to {now.strftime('%Y-%m-%d')}")
-        print(f"Total Papers Across All Categories: {results['total_papers']}")
-        print(f"\nBreakdown by Category:")
-        for cat, data in results["categories"].items():
-            print(f"  {cat:15s}: {data['count']:4d} papers")
-        print(f"{'='*60}\n")
+        # Log summary
+        category_breakdown = {cat: data["count"] for cat, data in results["categories"].items()}
+        logger.info("fetch_papers_debug.complete", data={
+            "time_range": {
+                "start": seven_days_ago.strftime('%Y-%m-%d'),
+                "end": now.strftime('%Y-%m-%d')
+            },
+            "total_papers": results["total_papers"],
+            "breakdown": category_breakdown
+        })
 
         return results
 

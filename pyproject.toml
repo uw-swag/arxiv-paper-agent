@@ -16,13 +16,19 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
 ]
 dependencies = [
+    "aiofiles>=25.1.0",
     "aiohttp>=3.13.3",
+    "arxiv>=2.4.0",
     "fastmcp>=2.14.2",
     "feedparser>=6.0.12",
     "mcp>=1.25.0",
     "mcp-agent>=0.2.6",
     "openai>=2.14.0",
-    "pypdf>=6.5.0",
+    "pydantic>=2.12.5",
+    "pymupdf4llm>=0.2.9",
+    "python-dateutil>=2.9.0.post0",
+    "sse-starlette>=3.1.2",
+    "uvicorn>=0.40.0",
     "vllm>=0.13.0",
 ]
 

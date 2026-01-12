@@ -5,14 +5,14 @@ import asyncio
 from .category_selection import select_categories_stage
 from .paper_fetching import fetch_papers_from_categories_stage
 from .paper_filtering import filter_papers_stage
-# from .paper_scoring import score_papers_stage
+from .paper_scoring import score_papers_stage
 # from .paper_summarization import summarize_papers_stage
 
 __all__ = [
     "select_categories_stage",
     "fetch_papers_from_categories_stage",
     "filter_papers_stage",
-    # "score_papers_stage",
+    "score_papers_stage",
     # "summarize_papers_stage",
 ]
 

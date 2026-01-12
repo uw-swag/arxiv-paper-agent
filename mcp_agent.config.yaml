@@ -10,16 +10,18 @@ logger:
 
 mcp:
   servers:
-    arxiv:
-      transport: stdio
+    arxiv-mcp-server:
+      # Use local patched version to fix pymupdf4llm stdout bug
       command: "python"
-      args: ["-m", "axpa.servers.arxiv"]
-      terminate_on_close: true
-
-
+      args: ["-m", "axpa.servers.arxiv_mcp_server", "--storage-path", "./outputs/papers"]
+    pdf-reader-mcp:
+      command: "npx"
+      args: ["-y", "@sylphx/pdf-reader-mcp"]
+      cwd: "./outputs/papers"
 
 openai:
-  default_model: "openai/gpt-oss-120b"
-  base_url: "https://unermined-bridgette-transempirical.ngrok-free.dev/v1"
-  # default_model: "MiniMax-M2.1"
+  # default_model: "openai/gpt-oss-120b"
+  # base_url: "https://unermined-bridgette-transempirical.ngrok-free.dev/v1"
+  default_model: "MiniMax-M2.1"
+  base_url: "http://localhost:8000/v1"
   # base_url: "https://unlobbying-gauzelike-lyman.ngrok-free.dev/v1"

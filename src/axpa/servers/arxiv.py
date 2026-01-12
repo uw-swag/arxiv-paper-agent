@@ -1,4 +1,4 @@
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.fastmcp import FastMCP, Context
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -9,15 +9,12 @@ import asyncio
 import json
 import os
 import io
-import pypdf
-from datetime import datetime, timezone, timedelta
-from axpa.category_prompt import ArxivCategoryInfo
-from axpa.category_prompt import ArxivCategory
+import PyPDF2
 
 load_dotenv()
 
 # Default number of results to return
-DEFAULT_RESULT_LIMIT = 100
+DEFAULT_RESULT_LIMIT = 5
 
 @dataclass
 class ArxivContext:
@@ -104,114 +101,6 @@ async def fetch_arxiv_papers(session: aiohttp.ClientSession, query: str, limit: 
         
         return papers
 
-def _parse_arxiv_datetime(dt_str: str) -> datetime | None:
-    """
-    Parse arXiv Atom datetime strings like:
-      - "2025-01-06T12:34:56Z"
-      - "2025-01-06T12:34:56+00:00"
-    """
-    if not dt_str:
-        return None
-    try:
-        # Normalize trailing Z
-        if dt_str.endswith("Z"):
-            dt_str = dt_str[:-1] + "+00:00"
-        return datetime.fromisoformat(dt_str)
-    except Exception:
-        return None
-    
-async def fetch_arxiv_papers_last_week_with_categories(
-    session: aiohttp.ClientSession,
-    query: str,
-    category_filters: list[str],
-    limit: int = DEFAULT_RESULT_LIMIT,
-    use_updated_time: bool = False,
-    fetch_multiplier: int = 10,
-) -> list[dict]:
-    """
-    Fetch arXiv papers matching `query` that are within the past 7 days, and optionally
-    filtered by arXiv category codes.
-
-    IMPORTANT:
-    - category_filters: list of category codes like ["cs.CR", "cs.SE"]
-      If empty, category filtering is disabled.
-    - Past week filtering is applied based on:
-        - entry.published (default), OR
-        - entry.updated if use_updated_time=True
-
-    Because the arXiv API endpoint doesn't provide a strict "last 7 days" server-side filter
-    for the Atom API results, we fetch more items and filter client-side.
-
-    Returns:
-        Up to `limit` paper dicts.
-    """
-    now = datetime.now(timezone.utc)
-    cutoff = now - timedelta(days=7)
-
-    prefetch = max(limit, 1) * max(fetch_multiplier, 1)
-
-    formatted_query = query.replace(" ", "+")
-    url = (
-        "http://export.arxiv.org/api/query"
-        f"?search_query={formatted_query}"
-        f"&start=0&max_results={prefetch}"
-        "&sortBy=submittedDate&sortOrder=descending"
-    )
-
-    async with session.get(url) as response:
-        if response.status != 200:
-            raise Exception(f"Failed to fetch papers: HTTP {response.status}")
-
-        content = await response.text()
-        feed = feedparser.parse(content)
-
-        papers: list[dict] = []
-
-        for entry in feed.entries:
-            paper_id = entry.id.split("/abs/")[-1]
-            authors = [author.name for author in entry.authors]
-            entry_categories = [tag.term for tag in entry.tags] if hasattr(entry, "tags") else []
-
-            dt_str = entry.updated if use_updated_time else entry.published
-            dt = _parse_arxiv_datetime(dt_str)
-            if dt is None:
-                continue
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-
-            if dt < cutoff:
-                if not use_updated_time:
-                    break
-                continue
-
-            if category_filters:
-                if not any(cat in entry_categories for cat in category_filters):
-                    continue
-
-            paper = {
-                "id": paper_id,
-                "title": entry.title,
-                "authors": authors,
-                "summary": entry.summary,
-                "published": entry.published,
-                "updated": entry.updated,
-                "link": entry.link,
-                "pdf_link": f"http://arxiv.org/pdf/{paper_id}",
-                "categories": entry_categories,
-            }
-
-            papers.append(paper)
-            if len(papers) >= limit:
-                break
-
-        return papers
-    
-def get_category_by_code(code: str) -> ArxivCategoryInfo | None:
-    for cat in ArxivCategory:
-        if cat.value.code == code:
-            return cat.value
-    return None
-
 async def fetch_paper_content(session: aiohttp.ClientSession, paper_id: str) -> str:
     """
     Attempt to fetch and extract the content of a paper.
@@ -235,7 +124,7 @@ async def fetch_paper_content(session: aiohttp.ClientSession, paper_id: str) -> 
             
             # Use PyPDF2 to extract text
             pdf_file = io.BytesIO(pdf_content)
-            pdf_reader = pypdf.PdfReader(pdf_file)
+            pdf_reader = PyPDF2.PdfReader(pdf_file)
             
             # Extract text from first few pages (full extraction could be too large)
             max_pages = min(5, len(pdf_reader.pages))
@@ -292,7 +181,7 @@ def format_paper_to_markdown(paper: dict, content: str = None) -> str:
     return md
 
 @mcp.tool()
-async def search_arxiv(ctx: Context, query: str, categories: list[str] = [], limit: int = DEFAULT_RESULT_LIMIT) -> str:
+async def search_arxiv(ctx: Context, query: str, limit: int = DEFAULT_RESULT_LIMIT) -> str:
     """Search for papers on arXiv based on keywords.
     
     This tool searches arXiv for papers matching the provided keywords and returns
@@ -301,17 +190,11 @@ async def search_arxiv(ctx: Context, query: str, categories: list[str] = [], lim
     Args:
         ctx: The MCP server provided context
         query: Search keywords or phrases
-        limit: Maximum number of results to return (default: 100)
+        limit: Maximum number of results to return (default: 5)
     """
     try:
         session = ctx.request_context.lifespan_context.session
-        papers = await fetch_arxiv_papers_last_week_with_categories(
-            session=session,
-            query=f"all:{query}",
-            category_filters=categories,
-            limit=limit,
-            use_updated_time=False,
-        )
+        papers = await fetch_arxiv_papers(session, query, limit)
         
         if not papers:
             return "No papers found matching your query."
@@ -357,7 +240,7 @@ async def get_paper_details(ctx: Context, paper_id: str, include_content: bool =
         return f"Error retrieving paper details: {str(e)}"
 
 @mcp.tool()
-async def search_and_summarize(ctx: Context, query: str, categories: list[str] = [], limit: int = DEFAULT_RESULT_LIMIT) -> str:
+async def search_and_summarize(ctx: Context, query: str, limit: int = DEFAULT_RESULT_LIMIT) -> str:
     """Search arXiv and provide a comprehensive summary of the top papers.
     
     This tool searches arXiv for papers matching the provided keywords, fetches
@@ -370,14 +253,7 @@ async def search_and_summarize(ctx: Context, query: str, categories: list[str] =
     """
     try:
         session = ctx.request_context.lifespan_context.session
-
-        papers = await fetch_arxiv_papers_last_week_with_categories(
-            session=session,
-            query=f"all:{query}",
-            category_filters=categories,
-            limit=limit,
-            use_updated_time=False,
-        )
+        papers = await fetch_arxiv_papers(session, query, limit)
         
         if not papers:
             return "No papers found matching your query."
@@ -415,46 +291,6 @@ async def search_and_summarize(ctx: Context, query: str, categories: list[str] =
     except Exception as e:
         return f"Error searching and summarizing arXiv papers: {str(e)}"
 
-@mcp.tool()
-async def describe_arxiv_categories(
-    ctx: Context,
-    categories: list[str],
-) -> str:
-    """Get detailed descriptions of arXiv category codes.
-
-    This tool retrieves the full name and description for specified arXiv
-    category codes (e.g., cs.SE, cs.CR, cs.AI).
-
-    Args:
-        ctx: The MCP server provided context
-        categories: List of arXiv category codes to look up
-
-    Returns:
-        JSON with category details including code, name, and description
-    """
-    results = []
-    unknown = []
-
-    for code in categories:
-        info = get_category_by_code(code)
-        if info:
-            results.append(
-                {
-                    "code": info.code,
-                    "name": info.name,
-                    "description": info.description,
-                }
-            )
-        else:
-            unknown.append(code)
-
-    output = {"categories": results}
-    if unknown:
-        output["unknown"] = unknown
-
-    return json.dumps(output, indent=2)
-
-
 async def main():
     transport = os.getenv("TRANSPORT", "stdio")
     if transport == 'sse':
@@ -463,7 +299,6 @@ async def main():
     else:
         # Run the MCP server with stdio transport
         await mcp.run_stdio_async()
-
 
 if __name__ == "__main__":
     asyncio.run(main())

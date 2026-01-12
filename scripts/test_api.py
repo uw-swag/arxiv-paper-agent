@@ -15,8 +15,8 @@ def get_current_weather(location: str, unit: str = "celsius"):
     """
     return {"temperature": 15, "weather": "sunny"}
 
-base_url = "https://openrouter.ai/api/v1"
-api_key = "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"
+base_url = "https://unermined-bridgette-transempirical.ngrok-free.dev/v1"
+api_key = "sk"
 
 client = OpenAI(
     base_url=base_url,
@@ -54,7 +54,7 @@ message = [
 ]
 
 completion = client.chat.completions.create(
-    model="nvidia/nemotron-3-nano-30b-a3b:free",
+    model="openai/gpt-oss-120b",
     messages=message,
     tools=[weather_function_schema],
     extra_body={
