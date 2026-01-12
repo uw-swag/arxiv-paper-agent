@@ -22,9 +22,9 @@ sbatch scripts/deploy_minimax.sh
 # 2 H100
 sbatch scripts/deploy_gptoss.sh
 
-# Expose the server to the internet (requires ngrok token but free)
+# Optional: Expose the server to the internet (requires ngrok token but free)
 ssh {compute node}
-cd ......
+cd {project directory}
 bash scripts/nibi_serve_example.sh
 ```
 
@@ -35,14 +35,14 @@ python main.py
 
 ## Related Projects
 - [mcp-agent](https://github.com/lastmile-ai/mcp-agent)
-- [arxiv-mcp](https://github.com/kelvingao/arxiv-mcp)
+- [arxiv-mcp-server](https://github.com/blazickjp/arxiv-mcp-server)
+- [pdf-reader-mcp](https://github.com/SylphxAI/pdf-reader-mcp)
 
 ## TODO
-- [ ] Fix stage 3 (parallel execution)
-- [ ] Stage 4: Score papers
 - [ ] Stage 5: Summarize papers
+- [ ] Additional features: customized summarization (combing current work with the paper), force categorization settings, configs...
 - [ ] Gather all results to output (categories + filtered papers list, selected top-k paper summaries)
-- [ ] Email notification (put in main.py or add something between workflows and outputs/exporters?)
-- [ ] Add Notion server
-- [ ] Push results to Notion (same issue as above)
+- [ ] (Exporter) file system mcp to structure and export the results to /outputs
+- [ ] (Exporter) Email notification (put in main.py or add something between workflows and outputs/exporters?)
+- [ ] (Exporter) Add Notion server and push results to Notion (same issue as above)
 - [ ] ...
