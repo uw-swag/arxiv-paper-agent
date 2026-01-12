@@ -1,6 +1,7 @@
-from typing import Callable, Coroutine, Any, Optional
+from __future__ import annotations
+from typing import Callable, Coroutine, Any, Optional, Type
 import asyncio
-
+import tenacity
 
 from .category_selection import select_categories_stage
 from .paper_fetching import fetch_papers_from_categories_stage
@@ -25,15 +26,20 @@ async def _retry_async(
     *,
     name: str,
     retries: int = 5,
-    delay_time: float = 1
+    delay_time: float = 1.0,
+    retry_on: Type[BaseException] | tuple[Type[BaseException], ...] = Exception,
 ) -> Any:
-    last_exc: Optional[BaseException] = None
-    for attempt in range(1, retries + 1):
-        try:
-            return await fn()
-        except Exception as e:
-            last_exc = e
-            if attempt >= retries:
-                break
-            await asyncio.sleep(delay_time)
-    raise RuntimeError(f"{name} failed after {retries} attempts") from last_exc
+
+    @tenacity.retry(
+        retry=tenacity.retry_if_exception_type(retry_on),
+        wait=tenacity.wait_fixed(delay_time),
+        stop=tenacity.stop_after_attempt(retries),
+        reraise=True,
+    )
+    async def _wrapped() -> Any:
+        return await fn()
+
+    try:
+        return await _wrapped()
+    except Exception as e:
+        raise RuntimeError(f"{name} failed after {retries} attempts") from e
