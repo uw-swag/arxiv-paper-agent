@@ -1,0 +1,83 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "arxiv-paper-agent"
+dynamic = ["version"]
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [{ name = "larryinx" }]
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+]
+dependencies = [
+    "aiofiles>=25.1.0",
+    "aiohttp>=3.13.3",
+    "arxiv>=2.4.0",
+    "arxiv-to-prompt>=0.3.0",
+    "fastmcp>=2.14.2",
+    "fastparquet>=2025.12.0",
+    "feedparser>=6.0.12",
+    "google-api-python-client>=2.188.0",
+    "google-auth>=2.47.0",
+    "google-auth-oauthlib>=1.2.4",
+    "mcp>=1.25.0",
+    "mcp-agent>=0.2.6",
+    "openai>=2.14.0",
+    "opencv-python>=4.13.0.90",
+    "pandas>=2.3.3",
+    "pyarrow>=23.0.0",
+    "pydantic>=2.12.5",
+    "pymupdf>=1.26.6",
+    "pymupdf-layout>=1.26.6",
+    "pymupdf4llm>=0.2.9",
+    "python-dateutil>=2.9.0.post0",
+    "sse-starlette>=3.1.2",
+    "tenacity>=9.1.2",
+    "uvicorn>=0.40.0",
+    "vllm>=0.13.0",
+]
+
+[project.urls]
+Source = "https://github.com/uw-swag/arxiv-paper-agent"
+Issues = "https://github.com/uw-swag/arxiv-paper-agent/issues"
+
+[tool.hatch.version]
+path = "src/axpa/__about__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/axpa"]
+
+# linting (ruff)
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+select = [
+    "E", # pycodestyle error
+    "F", # pyflakes
+    "I", # isort
+]
+
+[tool.ruff.isort]
+known-first-party = ["axpa"]
+
+[dependency-groups]
+dev = [
+    "black",
+    "coverage[toml]",
+    "hatch",
+    "pytest>=6",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov",
+    "ruff",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]

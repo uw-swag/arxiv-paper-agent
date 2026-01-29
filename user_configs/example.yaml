@@ -1,0 +1,24 @@
+user_config:
+  user_name: "Example User"
+  user_email: "example@example.com"
+  # TODO: Not implemented yet
+  personalized_summary: "I am a researcher in the field of [Your Field of Interest]."
+  summary_exporters:
+    - email: ["html", "short"]
+    - local: ["markdown", "both"]
+    # - notion: ["markdown", "detailed"] # Not implemented yet
+
+orchestrator_config:
+  - query: "[Your first search query]"
+    top_k: 10
+    search_limit: 1000
+    score_rounds: 2
+    time_duration: 14
+
+  - query: "[Your second search query]"
+    top_k: 10
+    search_limit: 1000
+    score_rounds: 2
+    time_duration: 14
+    
+  # ... add more queries as needed
