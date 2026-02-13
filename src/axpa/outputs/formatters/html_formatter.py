@@ -104,12 +104,13 @@ class HtmlFormatter(BaseFormatter):
         parts.append(f'{self._adjust_heading_levels(summary.overall_summary)}')
         return "\n".join(parts)
 
-    def format_paper_summary(self, summary_type: str, result: HTMLFormatResult) -> str:
+    def format_paper_summary(self, summary_type: str, result: WorkflowResult) -> str:
+        papers = result.html_summaries if isinstance(result, HTMLFormatResult) else result.summaries
         parts: list[str] = []
         parts.append('<div class="query-section">')
-        parts.append(f"<h2>Top {len(result.html_summaries)} papers for the topic: {html.escape(result.query)}</h2>")
+        parts.append(f"<h2>Top {len(papers)} papers for the topic: {html.escape(result.query)}</h2>")
 
-        for paper in result.html_summaries:
+        for paper in papers:
             summary = paper.score
             pdf_link = html.escape(summary.paper.pdf_link, quote=True)
 
